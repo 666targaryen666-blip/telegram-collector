@@ -56,40 +56,79 @@ Dashboard: http://localhost:8501. Сесія зберігається в `./sess
 ## 7. Обмеження
 
 У цьому архіві немає реальних API-ключів і не виконувалась Telegram-авторизація; тому реальний збір потребує запуску користувачем. Проксі SOCKS4/5/HTTP опційний через `PROXY_URL`, для мережевої сумісності, не обходу лімітів. Ротацію акаунтів навмисно не реалізовано, щоб не обходити антиаб'юз механізми.
-## Public Telegram collection (without API)
 
-The project also supports collecting public Telegram channel messages through the web preview at https://t.me/s/<channel>.
+## 8. Збір реальних Telegram-повідомлень без API
 
-Example source: noel_reports.
+Проєкт підтримує збір повідомлень із публічних Telegram-каналів через вебперегляд Telegram без використання API-ключів.
 
-### Collect messages
+Джерело: "@noel_reports" (https://t.me/noel_reports)
+Вебсторінка: https://t.me/s/noel_reports
+Результат: 253 реальні текстові повідомлення.
 
-powershell
-python collect_public.py
+Збір реалізовано у файлі "collect_public.py". Скрипт переглядає публічні сторінки Telegram, переходить до старіших повідомлень і зберігає нові записи без дублювання вже зібраних.
 
+Запуск на Windows
 
-The script collects up to 200 unique text messages, follows older-message links, pauses between requests, and saves the results to data/noel_reports_real.jsonl.
+Для запуску використовується Python 3.13.
 
-### Import into SQLite
+Створення віртуального середовища:
 
-powershell
-python import_real.py
+py -3.13 -m venv .venv313
 
+Встановлення залежностей:
 
-The real records are stored in data/noel_reports.sqlite. Duplicate records are ignored on repeated imports.
+.\.venv313\Scripts\python.exe -m pip install -r requirements.txt
 
-### Dashboard
+Збір повідомлень:
 
-Set DATABASE_PATH=data/noel_reports.sqlite in .env, then run:
+.\.venv313\Scripts\python.exe collect_public.py
 
-powershell
-streamlit run dashboard.py
+Імпорт повідомлень у SQLite:
 
+.\.venv313\Scripts\python.exe import_real.py
 
-### Data notes
+Запуск автоматичних тестів:
 
-- data/demo_200.jsonl contains synthetic demonstration records.
-- data/noel_reports_real.jsonl contains messages collected from a public Telegram web preview.
-- The web collector currently supports text messages; media-only posts are skipped.
-- Public web preview availability and HTML structure may change.
-- Collection should respect service limits and avoid excessive requests.
+.\.venv313\Scripts\python.exe -m pytest -q
+
+Результати
+
+Показник| Значення
+Реальні текстові повідомлення| 253
+Записи в SQLite| 253
+Нові записи під час повторного імпорту| 0
+Успішні автоматичні тести| 2
+
+Файли даних
+
+- "data/noel_reports_real.jsonl" — 253 реальні повідомлення, збережені у форматі JSONL.
+- "data/noel_reports.sqlite" — локальна база SQLite, яка не завантажується на GitHub.
+- "data/demo_200.jsonl" — синтетичні демонстраційні дані, які не враховуються як реальні повідомлення.
+
+Базу SQLite можна створити з файлу реальних повідомлень, запустивши "import_real.py".
+
+Dashboard
+
+Для перегляду даних використовується Streamlit.
+
+У файлі ".env" можна вказати:
+
+DATABASE_PATH=data/noel_reports.sqlite
+
+Запуск:
+
+.\.venv313\Scripts\python.exe -m streamlit run dashboard.py
+
+Після запуску відкрийте http://localhost:8501.
+
+Альтернативний збір через Telethon
+
+У проєкті також є колектор на основі Telethon, який використовує Telegram API. Для нього потрібні власні "api_id" і "api_hash".
+
+Однак 253 реальні повідомлення, наведені у звіті, зібрано вебколектором без API-ключів.
+
+Обмеження
+
+Вебколектор збирає повідомлення, що містять текст. Публікації лише з медіафайлами пропускаються. Доступність публічних сторінок і структура HTML Telegram можуть змінюватися.
+
+Докладні результати роботи описані у файлі "report.md".
