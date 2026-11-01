@@ -1,10 +1,10 @@
 # Telegram Collector
 
-Інкрементний колектор повідомлень **публічних Telegram-каналів** на Telethon. SQLite, JSONL/CSV, dedup, backfill, журнал запусків, dashboard, Docker.
+Python-проєкт для збору повідомлень із публічних Telegram-каналів. Підтримує вебзбір без API-ключів та альтернативний збір через Telethon. Дані зберігаються у JSONL і SQLite, реалізовано захист від дублікатів, інкрементний збір, тести та Streamlit-дашборд. Додатково передбачені backfill і Docker для API-колектора.
 
 ## 1. Підготовка
 
-Потрібні Python 3.10+ та Telegram-акаунт із доступом до Telegram API. Отримайте `api_id` і `api_hash` на https://my.telegram.org. Не публікуйте їх або файли `.session`.
+Для вебзбору потрібен Python та встановлені залежності. Telegram API-ключі не потрібні. Для альтернативного збору через Telethon необхідні Telegram-акаунт, api_id та api_hash. Отримайте `api_id` і `api_hash` на https://my.telegram.org. Не публікуйте їх або файли `.session`.
 
 ```bash
 python -m venv .venv
