@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 CHANNEL = "noel_reports"
 START_URL = f"https://t.me/s/{CHANNEL}"
 OUTPUT = Path("data/noel_reports_real.jsonl")
-TARGET = 200
+TARGET = 250
 MAX_PAGES = 40
 
 headers = {
