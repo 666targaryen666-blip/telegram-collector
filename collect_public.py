@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 CHANNEL = "noel_reports"
 START_URL = f"https://t.me/s/{CHANNEL}"
 OUTPUT = Path("data/noel_reports_real.jsonl")
-TARGET = 250
+TARGET = 260
 MAX_PAGES = 40
 
 headers = {
@@ -28,6 +28,13 @@ if OUTPUT.exists():
         if line.strip():
             record = json.loads(line)
             records[record["url"]] = record
+last_saved_id = max(
+    (int(record["message_id"]) for record in records.values()),
+    default=0,
+)
+
+print(f"Уже збережено повідомлень: {len(records)}")
+print(f"Останній збережений ID: {last_saved_id}")            
 
 url = START_URL
 visited_pages = set()
@@ -64,6 +71,8 @@ for page in range(1, MAX_PAGES + 1):
         break
 
     added = 0
+    newer_found = 0
+    reached_saved_messages = False
 
     for message in messages:
         post_id = message.get("data-post", "")
@@ -84,11 +93,17 @@ for page in range(1, MAX_PAGES + 1):
             continue
 
         message_url = f"https://t.me/{post_id}"
+        message_id = int(post_id.rsplit("/", 1)[-1])
+
+        if last_saved_id > 0 and message_id <= last_saved_id:
+            reached_saved_messages = True
+            continue
 
         if message_url in records:
             continue
 
-        message_id = int(post_id.rsplit("/", 1)[-1])
+        if message_id > last_saved_id:
+            newer_found += 1
 
         records[message_url] = {
             "source": CHANNEL,
@@ -112,7 +127,12 @@ for page in range(1, MAX_PAGES + 1):
             file.write(json.dumps(record, ensure_ascii=False) + "\n")
 
     print(f"Додано: {added}")
+    print(f"Нових за ID повідомлень на цій сторінці: {newer_found}")
     print(f"Усього унікальних текстових повідомлень: {len(records)}")
+
+    if reached_saved_messages:
+        print("Досягнуто раніше збережених повідомлень. Зупиняємо збір.")
+        break
 
     if len(records) >= TARGET:
         break
@@ -120,6 +140,7 @@ for page in range(1, MAX_PAGES + 1):
     older_link = soup.select_one("a.tme_messages_more")
 
     if not older_link or not older_link.get("href"):
+        print("Старіших сторінок більше немає.")
         print("Старіших сторінок більше немає.")
         break
 
