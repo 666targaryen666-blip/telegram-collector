@@ -141,7 +141,6 @@ for page in range(1, MAX_PAGES + 1):
 
     if not older_link or not older_link.get("href"):
         print("Старіших сторінок більше немає.")
-        print("Старіших сторінок більше немає.")
         break
 
     next_url = urljoin(url, older_link["href"])
