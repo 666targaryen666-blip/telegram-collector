@@ -1,63 +1,80 @@
-# Короткий звіт: Telegram Collector
+Короткий звіт: Telegram Collector
 
-**Джерело.** Публічні Telegram-канали, доступні через офіційний Telegram MTProto API (бібліотека Telethon). Канали налаштовуються через `CHANNELS` у `.env`. Приватні чати та групи не збираються. Авторизація здійснюється власними `api_id`/`api_hash` та захищеною сесією.
+1. Мета проєкту
 
-**Дані та модель.** Записи зберігаються в SQLite у спільній таблиці `messages` з полями `author`, `url`, `date`, `text`, а також `source`, `message_id`, `media_type`, `collected_at`. URL повідомлення є канонічним посиланням `https://t.me/<channel>/<id>`. Для відтворюваності реалізовано експорт у JSONL і CSV. Вкладення не завантажуються; зберігається лише тип медіа. Публічний username каналу виступає полем `author`.
+Розробити Python-колектор для збору повідомлень із публічного Telegram-каналу, збереження даних у JSONL та SQLite, перевірки дублікатів і повторного запуску без повного повторного збору.
 
-**Інкрементність і стійкість.** Для кожного каналу окремо ведеться `last_id`. Наступний прогін бере лише нові повідомлення; транзакція атомарно фіксує повідомлення та курсор. Окремий `backfill_before_id` дозволяє поступово добирати історію без повторного повного обходу. Дублікати відкидаються за `(source,message_id)` і `url`. Помилки ізолюються по каналах і записуються в журнал `runs`.
+2. Джерело та спосіб збору
 
-**Ліміти.** Реалізовано обмеження розміру партії, затримку між запитами та обробку Telegram `FloodWaitError` з фіксацією тривалості очікування. На відміну від HTTP API, MTProto не використовує заголовки `Retry-After`/`X-RateLimit-*`; релевантний сигнал — кількість секунд у FloodWait. Реальні значення лімітів і статистика FloodWait можуть бути наведені лише після запуску з власними обліковими даними. Ротація акаунтів для обходу лімітів не використовується.
+- Платформа: Telegram.
+- Публічний канал: "@noel_reports" (https://t.me/noel_reports).
+- Джерело повідомлень: "https://t.me/s/noel_reports".
+- Метод: обробка публічних HTML-сторінок за допомогою Python.
+- Для вебзбору не потрібні "api_id" та "api_hash".
 
-**Перевірка та результат.** До архіву додано 200 **синтетичних** демонстраційних JSONL-записів для перевірки формату, а не 200 реально зібраних публікацій. Для завершення емпіричної частини домашнього завдання потрібно виконати `collect`/`backfill`, експортувати щонайменше 200 реальних повідомлень і доповнити звіт фактичними цифрами запусків та FloodWait. Перед здачею перевірити правила використання та приватність даних.
-Real Telegram Data Collection — Results
+У проєкті також передбачено окремий колектор на основі Telethon, однак фактичні результати цього звіту отримані через публічний вебперегляд Telegram.
 
-Data source
+3. Структура даних
 
-- Platform: Telegram
-- Public channel: "NOELREPORTS" (https://t.me/noel_reports)
-- Collection method: Public Telegram web preview ("https://t.me/s/noel_reports")
-- API credentials: Not required for this collection method
+Кожне повідомлення містить такі поля:
 
-Collection results
+- "source" — назва каналу;
+- "message_id" — ідентифікатор повідомлення;
+- "author" — автор або назва каналу;
+- "url" — посилання на повідомлення;
+- "date" — дата публікації;
+- "text" — текст повідомлення;
+- "media_type" — тип медіа, якщо визначено.
 
-Metric| Result
-Pages processed| 13
-Real text messages collected| 200
-Unique message URLs| 200
-Records with empty text| 0
-Records without a date| 0
-Records without an author| 0
+Повідомлення без тексту пропускаються.
 
-Data storage
+4. Результати збору
 
-The collected messages were saved in two formats:
+Показник| Результат
+Реальні текстові повідомлення| 253
+Записи в SQLite| 253
+Додаткові записи під час повторного імпорту| 0
+Успішні автоматичні тести| 2
 
-- JSONL: "data/noel_reports_real.jsonl"
-- SQLite: "data/noel_reports.sqlite"
+Зібрані повідомлення збережено у файлах:
 
-Each message contains the source, message ID, author, URL, publication date, and text.
+- "data/noel_reports_real.jsonl" — дані у форматі JSONL;
+- "data/noel_reports.sqlite" — локальна база SQLite.
 
-Deduplication
+Окремо в проєкті є синтетичні демонстраційні дані, які не враховуються в результаті збору 253 реальних повідомлень.
 
-Messages are identified using their source, message ID, and unique URL.
+5. Інкрементний збір і дублікати
 
-The first SQLite import inserted 200 messages. Repeating the import inserted 0 additional messages, confirming that duplicate records are ignored.
+Вебколектор використовує ідентифікатори повідомлень для визначення нових публікацій. Під час повторного запуску він порівнює повідомлення з уже збереженими даними.
 
-Rate-limit handling
+Під час перевірки після попереднього збору було знайдено нове повідомлення, а загальна кількість записів збільшилася з 252 до 253.
 
-The public web collector uses randomized delays of 3–6 seconds between requests and stops when Telegram responds with HTTP 429.
+У SQLite повторний імпорт того самого JSONL-файлу додав 0 записів, що підтверджує захист від дублікатів.
 
-Dashboard
+6. Обмеження запитів і обробка помилок
 
-The Streamlit dashboard was connected to the SQLite database and successfully displayed the 200 collected messages.
+Вебколектор використовує затримки між HTTP-запитами, щоб зменшити навантаження на Telegram. Передбачено обробку відповіді HTTP 429.
 
-Limitations
+Окремий колектор на Telethon підтримує обробку "FloodWaitError", але під час фактичного вебзбору механізм MTProto не використовувався.
 
-- The collector currently saves text messages; media-only posts are skipped.
-- The public Telegram HTML structure may change.
-- The web collection script supports pagination and basic duplicate prevention, but persistent pagination cursors and automatic resumption from the last collected page are not yet implemented.
-- The data represents messages from one public channel and should not be considered representative of Telegram as a whole.
+7. Перевірка роботи
 
-Conclusion
+Було виконано:
 
-The project successfully collected, validated, and stored 200 real Telegram text messages. The results were verified using JSONL checks, SQLite queries, a repeated import, and the Streamlit dashboard.
+- збір повідомлень із публічного каналу;
+- збереження результатів у JSONL;
+- імпорт даних у SQLite;
+- повторний імпорт для перевірки дублікатів;
+- автоматичні тести Python — "2 passed";
+- перегляд даних через Streamlit.
+
+8. Обмеження
+
+- Збираються текстові повідомлення; публікації без тексту пропускаються.
+- Зміна HTML-структури Telegram може вимагати оновлення вебколектора.
+- Дані походять з одного публічного каналу й не представляють усю платформу Telegram.
+- Локальна база SQLite не завантажується до GitHub, оскільки виключена через ".gitignore".
+
+9. Висновок
+
+У межах проєкту зібрано та збережено 253 реальні текстові повідомлення з публічного Telegram-каналу. Перевірено повторний запуск, імпорт без дублікатів, роботу SQLite та автоматичних тестів. Код проєкту розміщено на GitHub.
