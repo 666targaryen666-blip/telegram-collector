@@ -56,3 +56,40 @@ Dashboard: http://localhost:8501. Сесія зберігається в `./sess
 ## 7. Обмеження
 
 У цьому архіві немає реальних API-ключів і не виконувалась Telegram-авторизація; тому реальний збір потребує запуску користувачем. Проксі SOCKS4/5/HTTP опційний через `PROXY_URL`, для мережевої сумісності, не обходу лімітів. Ротацію акаунтів навмисно не реалізовано, щоб не обходити антиаб'юз механізми.
+## Public Telegram collection (without API)
+
+The project also supports collecting public Telegram channel messages through the web preview at https://t.me/s/<channel>.
+
+Example source: noel_reports.
+
+### Collect messages
+
+powershell
+python collect_public.py
+
+
+The script collects up to 200 unique text messages, follows older-message links, pauses between requests, and saves the results to data/noel_reports_real.jsonl.
+
+### Import into SQLite
+
+powershell
+python import_real.py
+
+
+The real records are stored in data/noel_reports.sqlite. Duplicate records are ignored on repeated imports.
+
+### Dashboard
+
+Set DATABASE_PATH=data/noel_reports.sqlite in .env, then run:
+
+powershell
+streamlit run dashboard.py
+
+
+### Data notes
+
+- data/demo_200.jsonl contains synthetic demonstration records.
+- data/noel_reports_real.jsonl contains messages collected from a public Telegram web preview.
+- The web collector currently supports text messages; media-only posts are skipped.
+- Public web preview availability and HTML structure may change.
+- Collection should respect service limits and avoid excessive requests.
