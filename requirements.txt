@@ -1,0 +1,6 @@
+telethon>=1.36,<2
+python-dotenv>=1.0,<2
+streamlit>=1.35,<2
+pandas>=2.0,<3
+PySocks>=1.7,<2
+pytest>=8,<10

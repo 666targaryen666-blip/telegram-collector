@@ -1,0 +1,17 @@
+.env
+*.session
+*.session-journal
+__pycache__/
+.pytest_cache/
+logs/
+*.sqlite3
+sessions/
+# Virtual environments
+.venv/
+.venv313/
+
+# Python files
+*.pyc
+
+# SQLite databases
+*.sqlite
